@@ -7,15 +7,24 @@
 <style>
 /* ─── RESET ─────────────────────────────────────── */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html, body {
+html { height:100%; }
+body {
   width:100%; height:100%;
   background:#04080f;
   display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
+  align-items:center; justify-content:flex-start;
   overflow:hidden;
   touch-action:none;
   user-select:none;
   -webkit-user-select:none;
+}
+#canvas-shell {
+  position:relative;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  /* JS sets width/height to scaled canvas size */
 }
 
 /* ─── GAME WRAP ─────────────────────────────────── */
@@ -26,9 +35,9 @@ html, body {
     0 0 0 1px rgba(0,255,80,.10),
     0 0 60px rgba(0,255,80,.12),
     0 30px 80px rgba(0,0,0,.85);
-  position:relative;
-  flex-shrink:0;
-  transform-origin:top center;
+  position:absolute;
+  transform-origin:top left;
+  top:0; left:0;
 }
 
 /* ─── IN-GAME DOM OVERLAYS ──────────────────────── */
@@ -79,19 +88,22 @@ html, body {
   display:none;               /* shown via JS when touch is available */
   align-items:center;
   justify-content:space-between;
-  padding:10px 18px 6px;
-  background:rgba(2,6,10,.92);
-  border-top:1px solid rgba(0,255,80,.08);
-  gap:12px;
+  padding:8px 12px env(safe-area-inset-bottom, 8px);
+  background:rgba(2,6,10,.96);
+  border-top:1px solid rgba(0,255,80,.10);
+  gap:8px;
   flex-shrink:0;
+  flex:1;                     /* fill remaining vertical space */
+  min-height:0;
   position:relative;
   z-index:100;
+  overflow:hidden;
 }
 
 /* ── JOYSTICK ── */
 #joystick-zone {
   position:relative;
-  width:130px; height:130px;
+  width:min(130px, 32vw); height:min(130px, 32vw);
   flex-shrink:0;
 }
 #joystick-base {
@@ -132,42 +144,66 @@ html, body {
   display:flex; flex-direction:column; align-items:center; gap:8px;
 }
 #sprint-btn {
-  width:60px; height:60px; border-radius:50%;
+  width:min(60px,14vw); height:min(60px,14vw); border-radius:50%;
   background:rgba(255,220,0,.08); border:2px solid rgba(255,220,0,.22);
-  font-family:'Courier New',monospace; font-size:10px; font-weight:bold;
+  font-family:'Courier New',monospace; font-size:min(10px,2.4vw); font-weight:bold;
   color:rgba(255,220,0,.70); letter-spacing:1px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   cursor:pointer; transition:all .1s;
   -webkit-tap-highlight-color:transparent;
 }
-#sprint-btn span.icon { font-size:18px; line-height:1; }
+#sprint-btn span.icon { font-size:min(18px,4.5vw); line-height:1; }
 #sprint-btn.pressed {
   background:rgba(255,220,0,.25); border-color:rgba(255,220,0,.80);
   color:#ffd700; box-shadow:0 0 16px rgba(255,210,0,.35);
 }
+#drib-btn {
+  width:min(54px,13vw); height:min(54px,13vw); border-radius:50%;
+  background:rgba(0,220,255,.07); border:2px solid rgba(0,220,255,.25);
+  font-family:'Courier New',monospace; font-size:min(9px,2.2vw); font-weight:bold;
+  color:rgba(0,220,255,.70); letter-spacing:1px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .12s;
+  -webkit-tap-highlight-color:transparent;
+}
+#drib-btn span.icon { font-size:min(16px,4vw); line-height:1; }
+#drib-btn.pressed {
+  background:rgba(0,220,255,.22); border-color:rgba(0,220,255,.80);
+  color:#00ddff; box-shadow:0 0 18px rgba(0,220,255,.40);
+}
+/* Glows cyan while actually dribbling (set by JS) */
+#drib-btn.drib-active {
+  background:rgba(0,255,255,.20); border-color:rgba(0,255,255,.90);
+  color:#00ffff; box-shadow:0 0 22px rgba(0,255,255,.55);
+  animation:dribPulse 0.7s ease-in-out infinite;
+}
+@keyframes dribPulse {
+  0%,100% { box-shadow:0 0 18px rgba(0,255,255,.45); }
+  50%      { box-shadow:0 0 32px rgba(0,255,255,.80); }
+}
 #sub-row { display:flex; gap:7px; }
 .sub-btn {
-  width:36px; height:36px; border-radius:8px;
+  width:min(36px,9vw); height:min(36px,9vw); border-radius:8px;
   background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12);
-  font-family:'Courier New',monospace; font-size:9px; font-weight:bold;
+  font-family:'Courier New',monospace; font-size:min(9px,2.2vw); font-weight:bold;
   color:rgba(255,255,255,.40); display:flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .12s;
   -webkit-tap-highlight-color:transparent;
   flex-direction:column; line-height:1.1;
 }
-.sub-btn .sub-num { font-size:14px; color:rgba(255,240,100,.65); }
+.sub-btn .sub-num { font-size:min(14px,3.4vw); color:rgba(255,240,100,.65); }
 .sub-btn.pressed { background:rgba(255,240,100,.18); border-color:rgba(255,240,100,.60); color:#ffee44; }
 
 /* ── ACTION BUTTONS ── */
 #action-btns {
   position:relative;
-  width:168px; height:168px;
+  width:min(168px, 42vw); height:min(168px, 42vw);
   flex-shrink:0;
 }
-/* Diamond layout: top=W, left=A, bottom=S, right=D, centre=Q */
+/* Diamond layout positions use % of container */
 .ab {
   position:absolute;
-  width:56px; height:56px; border-radius:50%;
+  width:33.3%; height:33.3%; border-radius:50%;
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
   cursor:pointer;
@@ -178,30 +214,24 @@ html, body {
   -webkit-tap-highlight-color:transparent;
   gap:1px;
 }
-.ab .ab-key  { font-size:16px; font-weight:bold; line-height:1; }
-.ab .ab-hint { font-size:7.5px; line-height:1; opacity:.6; text-align:center; }
+.ab .ab-key  { font-size:min(16px,4vw); font-weight:bold; line-height:1; }
+.ab .ab-hint { font-size:min(7px,1.7vw); line-height:1; opacity:.6; text-align:center; }
 
-/* Positions (168px container, 56px buttons → center at 56px, offset=56) */
-/* top-center */
-#ab-W { left:56px; top:0; }
-/* left-center */
-#ab-A { left:0;   top:56px; }
-/* right-center */
-#ab-D { left:112px; top:56px; }
-/* bottom-center */
-#ab-S { left:56px;  top:112px; }
-/* Q floats top-right of the diamond */
+/* Diamond positions */
+#ab-W { left:33.3%; top:0; }
+#ab-A { left:0;     top:33.3%; }
+#ab-D { left:66.6%; top:33.3%; }
+#ab-S { left:33.3%; top:66.6%; }
 #ab-Q {
-  width:44px; height:44px;
-  left:124px; top:0;
-  border-radius:10px;
+  width:26%; height:26%;
+  left:74%; top:0;
+  border-radius:8px;
   background:rgba(100,100,100,.06); border-color:rgba(255,255,255,.10);
 }
-/* Finesse toggle bottom-left */
 #ab-Z {
-  width:44px; height:44px;
-  left:0; top:124px;
-  border-radius:10px;
+  width:26%; height:26%;
+  left:0; top:74%;
+  border-radius:8px;
   background:rgba(100,100,100,.06); border-color:rgba(255,255,255,.10);
 }
 
@@ -227,10 +257,12 @@ html, body {
 <body>
 
 <!-- ── PHASER CANVAS ─────────────────────────────── -->
-<div id="game-wrap">
-  <div id="ctrl-hud"></div>
-  <div id="mode-badge"></div>
-  <div id="notif-overlay"></div>
+<div id="canvas-shell">
+  <div id="game-wrap">
+    <div id="ctrl-hud"></div>
+    <div id="mode-badge"></div>
+    <div id="notif-overlay"></div>
+  </div>
 </div>
 
 <!-- ── MOBILE CONTROLLER ─────────────────────────── -->
@@ -242,11 +274,15 @@ html, body {
     <div id="joystick-knob"></div>
   </div>
 
-  <!-- CENTRE: Sprint + Subs -->
+  <!-- CENTRE: Sprint + Dribble + Subs -->
   <div id="mid-btns">
     <div id="sprint-btn" data-vkey="sprint">
       <span class="icon">⚡</span>
       <span>SPRINT</span>
+    </div>
+    <div id="drib-btn" data-vkey="pace">
+      <span class="icon">🔵</span>
+      <span>DRIB</span>
     </div>
     <div id="sub-row">
       <div class="sub-btn" data-vkey="n1"><span class="sub-num">1</span><span>SUB</span></div>
@@ -320,32 +356,71 @@ window.vKeys = {
 
   /* ── Responsive canvas scaling ─────────────────── */
   function scaleGame(){
-    const wrap = document.getElementById('game-wrap');
-    const ctrl = document.getElementById('mobile-ctrl');
-    if (!wrap) return;
+    const wrap  = document.getElementById('game-wrap');
+    const shell = document.getElementById('canvas-shell');
+    const ctrl  = document.getElementById('mobile-ctrl');
+    if (!wrap || !shell) return;
 
     const vw = window.innerWidth, vh = window.innerHeight;
     const GW = 960, GH = 620;
 
     if (hasTouch) {
-      // Reserve space for controller panel (~160px)
-      const ctrlH = 160;
+      // Measure actual controller height after it's visible
+      const ctrlH = ctrl.offsetHeight || 160;
+      const availW = vw;
       const availH = vh - ctrlH;
-      const scale = Math.min(vw / GW, availH / GH, 1);
+
+      // Scale to fit available area, never exceed 1
+      const scale = Math.min(availW / GW, availH / GH, 1);
+
+      // game-wrap is always 960×620; shift via transform
       wrap.style.width  = GW + 'px';
       wrap.style.height = GH + 'px';
       wrap.style.transform = `scale(${scale})`;
-      wrap.style.marginBottom = ((scale - 1) * GH * 0.5) + 'px';
-      ctrl.style.width = Math.min(vw, GW * scale) + 'px';
+      wrap.style.transformOrigin = 'top left';
+      wrap.style.position = 'absolute';
+      wrap.style.top = '0';
+      wrap.style.left = '0';
+
+      // shell collapses to the visual footprint of the scaled canvas
+      const scaledW = GW * scale;
+      const scaledH = GH * scale;
+      shell.style.width  = scaledW + 'px';
+      shell.style.height = scaledH + 'px';
+      shell.style.position = 'relative';
+      shell.style.overflow = 'hidden';
+      shell.style.flexShrink = '0';
+
+      // controller fills full screen width
+      ctrl.style.width = '100%';
+
     } else {
-      // Desktop: just fit to viewport
+      // Desktop: scale to viewport, centered
       const scale = Math.min(vw / GW, vh / GH, 1);
+      wrap.style.width  = GW + 'px';
+      wrap.style.height = GH + 'px';
       wrap.style.transform = `scale(${scale})`;
+      wrap.style.transformOrigin = 'top left';
+      wrap.style.position = 'absolute';
+      wrap.style.top = '0';
+      wrap.style.left = '0';
+
+      const scaledW = GW * scale;
+      const scaledH = GH * scale;
+      shell.style.width  = scaledW + 'px';
+      shell.style.height = scaledH + 'px';
+      shell.style.position = 'relative';
+      shell.style.overflow = 'hidden';
+      // Center on desktop
+      document.body.style.justifyContent = 'center';
+      document.body.style.alignItems     = 'center';
     }
   }
 
   window.addEventListener('resize', scaleGame);
-  window.addEventListener('load', scaleGame);
+  // Run after fonts/layout settle
+  window.addEventListener('load', ()=>{ setTimeout(scaleGame, 80); });
+  document.addEventListener('DOMContentLoaded', ()=>{ setTimeout(scaleGame, 80); });
   scaleGame();
 
   if (!hasTouch) return;  // keyboard-only on desktop
@@ -480,11 +555,17 @@ window.vKeys = {
   // Initial mode
   window.updateMobileCtrlMode('def');
 
+  /* ── DRIB BUTTON LIVE FEEDBACK ────────────────── */
+  window.setDribActive = function(active) {
+    const btn = document.getElementById('drib-btn');
+    if (btn) btn.classList.toggle('drib-active', active);
+  };
+
   /* ── HIDE CTRL DURING MENU / RESULT ──────────── */
   window.setMobileCtrlVisible = function(v){
     ctrl.style.display = v ? 'flex' : 'none';
-    // Re-scale when visibility changes
-    setTimeout(scaleGame, 50);
+    // Re-scale after layout change settles
+    requestAnimationFrame(()=>{ setTimeout(scaleGame, 30); });
   };
 
 })(); // end setupMobileCtrl
@@ -505,6 +586,16 @@ const F_SHOOT=500, F_FINESSE=395, F_PASS=285, F_THROUGH=330, F_CROSS=345, F_CLEA
 const SPD_WALK=172, SPD_SPRINT=262, SPD_PACE=86, SPD_GK=128;
 const STA_WALK=6.5, STA_SPRINT=24, STA_REGEN=4.8, STA_SLOW=28;
 const MATCH_SECS=120;
+
+// ── Dribble ───────────────────────────────────────────
+const DRIB_RNG          = 28;    // px — pick-up range
+const DRIB_OFFSET_TIGHT = 20;    // ball leads player (C — tight)
+const DRIB_OFFSET_SPRINT= 36;    // ball leads player (E — sprint dribble)
+const DRIB_SNAP_TIGHT   = 0.32;  // lerp snap strength — tight
+const DRIB_SNAP_SPRINT  = 0.15;  // looser — poke-off easier
+const DRIB_STEAL_RNG    = 34;    // AI steal radius when you're dribbling
+const DRIB_STEAL_CHANCE = 0.020; // per-frame steal probability in range
+const KNOCKON_F         = 320;   // knock-on burst force
 
 // ─── Utils ────────────────────────────────────────────
 const dist  = (ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
@@ -535,8 +626,8 @@ function setCtrlHUD(mode){
   if(!hud||!badge) return;
   const cls=mode==='atk'?'atk':'def';
   const rows=mode==='atk'?[
-    ['↑↓←→','Move'],['E','Sprint'],['S','Short Pass'],['D','Shoot'],
-    ['Z+D','Finesse'],['A','Cross/Lob'],['W','Through Ball'],['Q','Trigger Run'],['C','Protect'],
+    ['↑↓←→','Move'],['E','Sprint Drib'],['C','Close Drib'],['D+drib','Knock-On'],
+    ['S','Short Pass'],['D','Shoot'],['Z+D','Finesse'],['A','Cross'],['W','Through'],['Q','Run'],
   ]:[
     ['↑↓←→','Move'],['E','Sprint'],['S','Contain'],['D','Tackle'],
     ['A','Slide Tackle'],['W','Rush GK'],['Q','Switch Player'],
@@ -640,6 +731,12 @@ class GameScene extends Phaser.Scene {
     this.actionCD=0; this.switchCD=0; this.tackleCD=0; this.slideCD=0;
     this.trigRunIdx=-1; this.trigRunTimer=0;
     this.gkRushOn=false; this.gkRushTimer=0;
+
+    // Dribble state
+    this.isDribbling  = false;
+    this.dribMode     = 'none';   // 'tight' | 'sprint' | 'none'
+    this.dribDir      = 0;        // angle ball is led toward
+    this.dribLostCD   = 0;        // brief cooldown after losing ball so you can't re-grab instantly
   }
 
   // ── CREATE ─────────────────────────────────────────
@@ -816,6 +913,7 @@ class GameScene extends Phaser.Scene {
     const dt=delta/1000;
     this.actionCD=Math.max(0,this.actionCD-dt); this.switchCD=Math.max(0,this.switchCD-dt);
     this.tackleCD=Math.max(0,this.tackleCD-dt); this.slideCD=Math.max(0,this.slideCD-dt);
+    this.dribLostCD=Math.max(0,(this.dribLostCD||0)-dt);
     if(this.trigRunTimer>0) this.trigRunTimer=Math.max(0,this.trigRunTimer-dt);
     if(this.gkRushTimer>0)  this.gkRushTimer=Math.max(0,this.gkRushTimer-dt);
     this._updatePossession();
@@ -866,6 +964,7 @@ class GameScene extends Phaser.Scene {
 
     let spd=this.paceHeld?SPD_PACE:this.sprintHeld?SPD_SPRINT*(sel.stamina<STA_SLOW?.68:1):pSpd(sel);
 
+    // ── Movement direction
     let vx=0,vy=0;
     if(isDown(k,'up'))    vy-=spd;
     if(isDown(k,'down'))  vy+=spd;
@@ -873,7 +972,10 @@ class GameScene extends Phaser.Scene {
     if(isDown(k,'right')) vx+=spd;
     if(vx&&vy){vx*=.7071;vy*=.7071;}
 
-    // S defend: Contain
+    // Track move direction for dribble offset
+    if(vx!==0||vy!==0) this.dribDir=Math.atan2(vy,vx);
+
+    // ── S defend: Contain override
     this.containOn=false;
     if(!atk&&isDown(k,'pass')){
       this.containOn=true;
@@ -886,24 +988,69 @@ class GameScene extends Phaser.Scene {
       }
     }
 
+    // ── DRIBBLE SYSTEM ─────────────────────────────────
+    // Determine if we can dribble (ball in range, not on cooldown, attacking)
+    const dBall=dist(sel.sprite.x,sel.sprite.y,this.ball.x,this.ball.y);
+    const canPickUp = dBall < DRIB_RNG && this.dribLostCD<=0;
+
+    let newDribMode='none';
+    if(canPickUp || this.isDribbling){
+      if(this.paceHeld)        newDribMode='tight';   // C — close control
+      else if(this.sprintHeld) newDribMode='sprint';  // E — sprint dribble
+    }
+
+    // Start / continue / stop dribble
+    if(newDribMode!=='none'){
+      if(!this.isDribbling && window.setDribActive) window.setDribActive(true);
+      this.isDribbling=true;
+      this.dribMode=newDribMode;
+      this._updateDribble(sel, vx, vy, dt);
+    } else {
+      // Exit dribble — give ball a gentle kick in move direction
+      if(this.isDribbling){
+        this.isDribbling=false;
+        this.dribMode='none';
+        if(window.setDribActive) window.setDribActive(false);
+        // Small release nudge so ball doesn't just stop dead
+        if(vx!==0||vy!==0){
+          const releaseF=spd*0.55;
+          this.ball.setVelocity(Math.cos(this.dribDir)*releaseF, Math.sin(this.dribDir)*releaseF);
+        }
+      }
+    }
+
     sel.sprite.setVelocity(vx,vy);
     sel.isMoving=vx!==0||vy!==0;
     sel.isSprinting=this.sprintHeld;
 
-    // Context actions
-    if(justDown(k,'pass')&&atk&&this.actionCD<=0){ if(this._shortPass(sel)) this.actionCD=.28; }
+    // ── Context action keys ──────────────────────────
+    // D while dribbling = Knock-On (burst ball into space ahead)
+    if(justDown(k,'shoot')&&this.isDribbling){
+      this._knockOn(sel);
+      this.isDribbling=false; this.dribMode='none';
+      this.actionCD=0.30;
+      return; // skip other shoot logic this frame
+    }
 
+    if(justDown(k,'pass')&&atk&&this.actionCD<=0){
+      if(this.isDribbling){ this.isDribbling=false; this.dribMode='none'; }
+      if(this._shortPass(sel)) this.actionCD=.28;
+    }
     if(justDown(k,'shoot')&&this.actionCD<=0){
       if(atk){ if(this._shoot(sel,this.finesseHeld)) this.actionCD=.35; }
       else    { if(this.tackleCD<=0){this._tackle(sel);this.tackleCD=.58;} }
     }
     if(justDown(k,'cross')&&this.actionCD<=0){
-      if(atk){ if(this._cross(sel)) this.actionCD=.32; }
-      else    { if(this.slideCD<=0){this._slide(sel);this.slideCD=.78;} }
+      if(atk){
+        if(this.isDribbling){ this.isDribbling=false; this.dribMode='none'; }
+        if(this._cross(sel)) this.actionCD=.32;
+      } else { if(this.slideCD<=0){this._slide(sel);this.slideCD=.78;} }
     }
     if(justDown(k,'thru')&&this.actionCD<=0){
-      if(atk){ if(this._throughBall(sel)) this.actionCD=.30; }
-      else    { this._rushGK(); }
+      if(atk){
+        if(this.isDribbling){ this.isDribbling=false; this.dribMode='none'; }
+        if(this._throughBall(sel)) this.actionCD=.30;
+      } else { this._rushGK(); }
     }
     if(justDown(k,'q')){
       if(atk) this._triggerRun();
@@ -912,6 +1059,84 @@ class GameScene extends Phaser.Scene {
     if(justDown(k,'n1')) this._subA(6);
     if(justDown(k,'n2')) this._subA(7);
     if(justDown(k,'n3')) this._subA(8);
+
+    // ── AI steal attempts while you dribble ──────────
+    if(this.isDribbling) this._checkDribbleSteal(sel);
+  }
+
+  // ── DRIBBLE CORE ────────────────────────────────────
+  // Called every frame when dribble is active.
+  // Magnetically pulls ball to an offset point in front of player.
+
+  _updateDribble(sel, vx, vy, dt){
+    const offset = this.dribMode==='tight' ? DRIB_OFFSET_TIGHT : DRIB_OFFSET_SPRINT;
+    const snap   = this.dribMode==='tight' ? DRIB_SNAP_TIGHT   : DRIB_SNAP_SPRINT;
+
+    // Target = position in front of player based on movement / last-known direction
+    const dir = (vx!==0||vy!==0) ? Math.atan2(vy,vx) : this.dribDir;
+    this.dribDir = dir;
+
+    const tx = sel.sprite.x + Math.cos(dir)*offset;
+    const ty = sel.sprite.y + Math.sin(dir)*offset;
+
+    // Clamp to field interior
+    const cx = clamp(tx, FX+B_RAD+2, FX+FW-B_RAD-2);
+    const cy = clamp(ty, FY+B_RAD+2, FY+FH-B_RAD-2);
+
+    // Smoothly pull ball toward target (lerp position each frame)
+    const newBX = lerp(this.ball.x, cx, snap);
+    const newBY = lerp(this.ball.y, cy, snap);
+    this.ball.setPosition(newBX, newBY);
+
+    // Match ball velocity to player velocity so physics stays consistent on release
+    const playerSpd = Math.hypot(vx,vy);
+    if(playerSpd>10){
+      this.ball.setVelocity(vx*0.85, vy*0.85);
+    } else {
+      // Player stopped — damp the ball
+      this.ball.setVelocity(
+        this.ball.body.velocity.x*0.55,
+        this.ball.body.velocity.y*0.55
+      );
+    }
+  }
+
+  // ── KNOCK-ON ────────────────────────────────────────
+  // Tap D while dribbling — burst ball ~120px forward into space
+
+  _knockOn(sel){
+    const dir = this.dribDir;
+    // Aim slightly toward goal
+    const gx = FX+FW+GOAL_W/2;
+    const toGoal = ang(sel.sprite.x, sel.sprite.y, gx, CY);
+    const blended = dir + (toGoal-dir)*0.30; // blend between move dir and goal dir
+
+    this.ball.setVelocity(Math.cos(blended)*KNOCKON_F, Math.sin(blended)*KNOCKON_F);
+    this._fx(this.ball.x, this.ball.y, 0xffff44);
+    this.dribLostCD = 0.35; // brief window before you can re-grab
+    domNotif('KNOCK-ON ▶','#ffff44');
+  }
+
+  // ── AI STEAL WHILE DRIBBLING ─────────────────────────
+
+  _checkDribbleSteal(sel){
+    this.teamB.forEach(opp=>{
+      if(opp.onBench) return;
+      const d=dist(opp.sprite.x, opp.sprite.y, sel.sprite.x, sel.sprite.y);
+      if(d > DRIB_STEAL_RNG) return;
+
+      // Sprint dribble = easier to steal; tight = harder
+      const chance = this.dribMode==='sprint' ? DRIB_STEAL_CHANCE*1.8 : DRIB_STEAL_CHANCE;
+      if(Math.random() < chance){
+        // Steal! Knock ball toward opponent's half
+        this.isDribbling=false; this.dribMode='none'; this.dribLostCD=0.5;
+        if(window.setDribActive) window.setDribActive(false);
+        const a=ang(sel.sprite.x,sel.sprite.y, opp.sprite.x, opp.sprite.y);
+        this.ball.setVelocity(Math.cos(a)*260, Math.sin(a)*260);
+        this._fx(this.ball.x, this.ball.y, 0xff4422);
+        domNotif('DISPOSSESSED!','#ff4422');
+      }
+    });
   }
 
   // ── ACTIONS ─────────────────────────────────────────
@@ -1109,6 +1334,7 @@ class GameScene extends Phaser.Scene {
 
   _resetPos(){
     this.ball.setPosition(CX,CY).setVelocity(0,0);
+    this.isDribbling=false; this.dribMode='none'; this.dribLostCD=0;
     [...this.teamA,...this.teamB].forEach(p=>{ if(!p.onBench) p.sprite.setPosition(p.homeX,p.homeY).setVelocity(0,0); });
   }
 
@@ -1161,7 +1387,26 @@ class GameScene extends Phaser.Scene {
       const al=.55+.40*Math.sin(time*.006);
       g.lineStyle(3,0x00ff64,al); g.strokeCircle(sel.sprite.x,sel.sprite.y,P_RAD+8);
       if(this.containOn){ g.lineStyle(2,0xffaa44,.72); g.strokeCircle(sel.sprite.x,sel.sprite.y,P_RAD+18); }
-      if(sel.isSprinting){
+
+      // ── Dribble ring + leading dot
+      if(this.isDribbling){
+        const dribCol = this.dribMode==='tight' ? 0x00ffff : 0xffdd00;
+        const dribAlpha = 0.55+0.40*Math.sin(time*0.010);
+        // Outer glow ring
+        g.lineStyle(3, dribCol, dribAlpha);
+        g.strokeCircle(sel.sprite.x, sel.sprite.y, P_RAD+14);
+        // Ball lead dot
+        const offset = this.dribMode==='tight' ? DRIB_OFFSET_TIGHT : DRIB_OFFSET_SPRINT;
+        const ldx = sel.sprite.x + Math.cos(this.dribDir)*(P_RAD+offset+4);
+        const ldy = sel.sprite.y + Math.sin(this.dribDir)*(P_RAD+offset+4);
+        g.fillStyle(dribCol, 0.55);
+        g.fillCircle(ldx, ldy, 5);
+        // Line from player to lead point
+        g.lineStyle(1.5, dribCol, 0.30);
+        g.lineBetween(sel.sprite.x, sel.sprite.y, ldx, ldy);
+      }
+
+      if(sel.isSprinting&&!this.isDribbling){
         const vx=sel.sprite.body.velocity.x,vy=sel.sprite.body.velocity.y;
         if(Math.hypot(vx,vy)>80){ g.fillStyle(0x00ff64,.13); g.fillCircle(sel.sprite.x-vx*.05,sel.sprite.y-vy*.05,P_RAD*.68); }
       }
@@ -1206,7 +1451,13 @@ class GameScene extends Phaser.Scene {
   _updateSelTxt(){
     const p=this.teamA[this.selIdx];
     if(p&&!p.onBench){
-      this.selTxt.setText(`● #${p.number} ${p.role}  STA:${Math.round(p.stamina)}%${p.isSprinting?' ⚡':''}${this.containOn?' 🛡':''}${this.finesseHeld?' Z':''}`);
+      const drib = this.isDribbling
+        ? (this.dribMode==='tight' ? ' 🔵DRIBBLE' : ' 🟡SPRINT DRIB')
+        : '';
+      const sprint=(!this.isDribbling&&p.isSprinting)?' ⚡':'';
+      const con=this.containOn?' 🛡':'';
+      const fin=this.finesseHeld?' Z':'';
+      this.selTxt.setText(`● #${p.number} ${p.role}  STA:${Math.round(p.stamina)}%${drib}${sprint}${con}${fin}`);
     }
   }
 }
