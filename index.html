@@ -352,7 +352,14 @@ class LobbyScene extends Phaser.Scene {
   }
   _hostFlow(){
     MP.mode='host';
-    MP.peer=new Peer(undefined,{debug:0});
+    // FIX 4: explicit PeerJS config for better cross-device reliability
+    MP.peer=new Peer(undefined,{
+      host:'0.peerjs.com', port:443, path:'/', secure:true,
+      debug:0, config:{iceServers:[
+        {urls:'stun:stun.l.google.com:19302'},
+        {urls:'stun:stun1.l.google.com:19302'},
+      ]}
+    });
     MP.peer.on('open',id=>{
       MP.roomId=id;
       const url=`${location.origin}${location.pathname}?r=${id}`;
@@ -369,26 +376,59 @@ class LobbyScene extends Phaser.Scene {
     });
     MP.peer.on('connection',conn=>{
       MP.conn=conn;
-      conn.on('open',()=>{ MP.connected=true; this.waitTxt.setText('🟢 Friend connected!'); this.time.delayedCall(700,()=>this.scene.start('GameScene')); });
+      conn.on('open',()=>{
+        MP.connected=true;
+        this.waitTxt.setText('🟢 Friend connected!');
+        this.time.delayedCall(700,()=>this.scene.start('GameScene'));
+      });
+      // Register ONCE here — window._gs routes to GameScene methods
       conn.on('data',data=>{ if(window._gs) window._gs._hostReceive(data); });
       conn.on('close',()=>{ MP.connected=false; domNotif('Friend disconnected','#ff4422'); });
     });
-    MP.peer.on('error',err=>this.statusTxt.setText(`Error: ${err.type}`).setColor('#ff4422'));
+    MP.peer.on('error',err=>{
+      const msgs={
+        'peer-unavailable':'Friend\'s room not found. Check the link.',
+        'network':'Network error. Check your connection.',
+        'server-error':'Connection server error. Try again.',
+        'browser-incompatible':'Browser not supported. Try Chrome/Firefox.',
+      };
+      this.statusTxt.setText(msgs[err.type]||`Error: ${err.type}`).setColor('#ff4422');
+    });
   }
   _guestFlow(roomId){
     if(!roomId){ this.statusTxt.setText('No room ID in link!').setColor('#ff4422'); return; }
     MP.mode='guest';
-    MP.peer=new Peer(undefined,{debug:0});
+    // FIX 4: same explicit config as host
+    MP.peer=new Peer(undefined,{
+      host:'0.peerjs.com', port:443, path:'/', secure:true,
+      debug:0, config:{iceServers:[
+        {urls:'stun:stun.l.google.com:19302'},
+        {urls:'stun:stun1.l.google.com:19302'},
+      ]}
+    });
     this.statusTxt.setText('Joining room...');
     this.linkTxt.setText(`Room: ${roomId.slice(0,16)}...`);
     MP.peer.on('open',()=>{
       const conn=MP.peer.connect(roomId,{reliable:true,serialization:'json'});
       MP.conn=conn;
-      conn.on('open',()=>{ MP.connected=true; this.statusTxt.setText('🟢 Connected!'); this.time.delayedCall(600,()=>this.scene.start('GameScene')); });
+      conn.on('open',()=>{
+        MP.connected=true;
+        this.statusTxt.setText('🟢 Connected!');
+        this.time.delayedCall(600,()=>this.scene.start('GameScene'));
+      });
+      // Register ONCE here — window._gs routes to GameScene methods
       conn.on('data',data=>{ if(window._gs) window._gs._guestReceive(data); });
       conn.on('close',()=>{ MP.connected=false; domNotif('Host disconnected','#ff4422'); });
     });
-    MP.peer.on('error',err=>{ this.statusTxt.setText(`Failed: ${err.type}`).setColor('#ff4422'); this.waitTxt.setText('Check the link and try again.'); });
+    MP.peer.on('error',err=>{
+      const msgs={
+        'peer-unavailable':'Room not found. Ask host to re-share link.',
+        'network':'Network error. Check your connection.',
+        'server-error':'Connection server error. Try again.',
+      };
+      this.statusTxt.setText(msgs[err.type]||`Failed: ${err.type}`).setColor('#ff4422');
+      this.waitTxt.setText('Reload the page and try again.');
+    });
   }
   _animWait(){
     let d=0;
@@ -524,37 +564,45 @@ class GameScene extends Phaser.Scene {
       if(this.matchTime<=0) this._endMatch();
     }});
 
-    if(MP.conn){
-      MP.conn.on('data',data=>{ if(MP.mode==='host') this._hostReceive(data); else this._guestReceive(data); });
-    }
+    // NOTE: data handlers are registered ONLY in LobbyScene (window._gs routes here).
+    // DO NOT register conn.on('data') here — would cause every packet to fire TWICE.
 
     setCtrlHUD('def');
-    this._startCountdown(); // UX: kickoff countdown 3-2-1
+    // FIX 3: Guest does NOT run its own countdown — mirrors host state from _guestReceive.
+    if(MP.mode==='guest'){
+      this.state='playing'; // guest starts live; host's gst broadcasts control pausing
+    } else {
+      this._startCountdown();
+    }
   }
 
-  // ── KICKOFF COUNTDOWN ───────────────────────────
   _startCountdown(){
     this.state='countdown';
-    this.ball.setVelocity(0,0);
+    if(this.ball?.body) this.ball.setVelocity(0,0);
     [...this.teamA,...this.teamB].forEach(p=>{ if(!p.onBench) p.sprite.setVelocity(0,0); });
 
     const msgs=['3','2','1','GO!'];
     const cols=[0xffee44,0xffee44,0xffee44,0x00ff64];
     let i=0;
     const showNext=()=>{
-      if(i>0 && this._cdTxt) this._cdTxt.destroy();
+      if(this._cdTxt){ this._cdTxt.destroy(); this._cdTxt=null; }
       if(i>=msgs.length){ this.state='playing'; return; }
-      this._cdTxt=this.add.text(W/2,CY-30,msgs[i],{
-        fontSize:'96px',fontFamily:'Courier New',color:`#${cols[i].toString(16).padStart(6,'0')}`,
+      const idx=i; // capture for closure
+      i++;         // increment ONCE here before the async tween
+      this._cdTxt=this.add.text(W/2,CY-30,msgs[idx],{
+        fontSize:'96px',fontFamily:'Courier New',
+        color:`#${cols[idx].toString(16).padStart(6,'0')}`,
         fontStyle:'bold',stroke:'#000000',strokeThickness:10,
       }).setOrigin(0.5).setDepth(35).setAlpha(0);
       this.tweens.add({ targets:this._cdTxt, alpha:1, scale:1.2, duration:200, ease:'Back.out',
-        onComplete:()=>{ this.tweens.add({ targets:this._cdTxt, alpha:0, scale:.5, delay:600, duration:250, ease:'Power2',
-          onComplete:()=>{ if(this._cdTxt){this._cdTxt.destroy();this._cdTxt=null;} i++; showNext(); } }); }
+        onComplete:()=>{
+          this.tweens.add({ targets:this._cdTxt, alpha:0, scale:.5, delay:600, duration:250, ease:'Power2',
+            onComplete:()=>{ if(this._cdTxt){this._cdTxt.destroy();this._cdTxt=null;} showNext(); }
+          });
+        }
       });
-      i++;
     };
-    i=0; showNext();
+    showNext();
   }
 
   // ── TEXTURES ────────────────────────────────────
@@ -704,13 +752,12 @@ class GameScene extends Phaser.Scene {
       this._guestSelB=data.sB||this.selIdxB;
       const wm=this.possession==='B'?'atk':'def';
       if(wm!==this._lastHudMode){ this._lastHudMode=wm; setCtrlHUD(wm); }
-      // Sync game state (countdown, over)
-      if(data.gst==='countdown'&&this.state==='playing') this.state='countdown';
-      else if(data.gst==='playing'&&this.state==='countdown') this.state='playing';
+      // FIX 5: directly mirror host game state (no race conditions)
+      if(data.gst==='playing')    this.state='playing';
+      else if(data.gst==='countdown') this.state='countdown';
+      else if(data.gst==='over')  this.state='over';
     } else if(data.t==='goal'){
       this._goalEventGuest(data.scorer);
-    } else if(data.t==='countdown'){
-      this._startCountdown();
     } else if(data.t==='notif'){
       domNotif(data.msg,data.col);
     } else if(data.t==='end'){
@@ -852,19 +899,24 @@ class GameScene extends Phaser.Scene {
 
   // ── UPDATE LOOP ─────────────────────────────────
   update(time,delta){
-    if(this.state==='countdown'||this.state==='over') return;
-    if(this.state!=='playing') return;
+    if(this.state==='over') return;
     const dt=delta/1000;
 
-    // GUEST: just send, render received
+    // GUEST: render received state + send inputs (even during countdown for responsiveness)
     if(MP.mode==='guest'){
       this.switchCD=Math.max(0,this.switchCD-dt);
-      this._guestSendInputs();
+      if(this.state==='playing') this._guestSendInputs();
       this._drawDynamic(time);
       this._syncLabels();
       this._updateSelTxt();
       return;
     }
+
+    // HOST/SOLO: skip logic during countdown/goal but still render
+    if(this.state==='countdown'||this.state==='goal'){
+      this._drawDynamic(time); this._syncLabels(); return;
+    }
+    if(this.state!=='playing') return;
 
     this.actionCD=Math.max(0,this.actionCD-dt); this.switchCD=Math.max(0,this.switchCD-dt);
     this.tackleCD=Math.max(0,this.tackleCD-dt); this.slideCD=Math.max(0,this.slideCD-dt);
@@ -1165,25 +1217,31 @@ class GameScene extends Phaser.Scene {
   _goalEventHost(scorer){ // runs on host/solo only
     if(this.state==='goal'||this.state==='countdown') return;
     this.state='goal';
-    // BUG FIX: freeze ball and disable body during animation so it doesn't wander
+    // Freeze ball — disable body so it doesn't wander during animation
     this.ball.setVelocity(0,0); this.ball.body.enable=false;
     [...this.teamA,...this.teamB].forEach(p=>{ if(!p.onBench) p.sprite.setVelocity(0,0); });
-    if(MP.mode==='host'&&MP.connected) try{ MP.conn.send({t:'goal',scorer}); }catch(e){}
+    // Broadcast goal event + immediate state so guest also pauses
+    if(MP.mode==='host'&&MP.connected){
+      try{
+        MP.conn.send({t:'goal',scorer});
+        MP.conn.send({t:'s', bl:{x:Math.round(this.ball.x),y:Math.round(this.ball.y),vx:0,vy:0},
+          pa:this.teamA.map(p=>({x:Math.round(p.sprite.x),y:Math.round(p.sprite.y),vx:0,vy:0,sta:Math.round(p.stamina),ob:p.onBench})),
+          pb:this.teamB.map(p=>({x:Math.round(p.sprite.x),y:Math.round(p.sprite.y),vx:0,vy:0,sta:Math.round(p.stamina),ob:p.onBench})),
+          sa:this.scoreA,sb:this.scoreB,tm:this.matchTime,gst:'goal',
+          pos:this.possession,sA:this.selIdx,sB:this._guestSelB});
+      }catch(e){}
+    }
     this._playGoalAnim(scorer, ()=>{
       this.ball.body.enable=true;
       this._resetPos();
-      this.state='playing';
       this.possession='none';
-      // UX: brief countdown after each goal
-      this._startCountdown();
+      this._startCountdown(); // sets state='countdown' → 'playing'
     });
   }
 
-  _goalEventGuest(scorer){ // BUG FIX: guest only plays animation, does NOT reset positions
-    if(this.state==='goal') return;
-    this.state='goal';
+  _goalEventGuest(scorer){ // Guest: play visual only, host controls state via gst broadcasts
     this._playGoalAnim(scorer, ()=>{
-      this.state='playing'; this.possession='none';
+      // state is already mirrored from host — no manual set needed
     });
   }
 
